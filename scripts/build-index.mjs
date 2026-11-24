@@ -2,29 +2,30 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 // ============================================================
-// 1. SITE REGISTRY (Replace with your website & sitemap URLs)
+// 1. SITE REGISTRY
 // ============================================================
 const SITES = [
   {
     id: "s1",
-    origin: "https://your-first-site.com",
-    sitemap: "https://your-first-site.com/sitemap_index.xml",
+    origin: "https://new1.bollyflix.tours",
+    sitemap: "https://new1.bollyflix.tours/sitemap_index.xml",
   },
   {
     id: "s2",
-    origin: "https://your-second-site.com",
-    sitemap: "https://your-second-site.com/sitemap.xml",
+    origin: "https://filmyfly.kred",
+    sitemap: "https://filmyfly.kred/post-sitemap.xml",
   },
   {
     id: "s3",
-    origin: "https://your-third-site.com",
-    sitemap: "https://your-third-site.com/sitemap.xml",
+    origin: "https://www.filmywap.archi",
+    sitemap: "https://www.filmywap.archi/sitemap.xml",
   },
 ];
 
 const STATIC_EXT_RE =
   /\.(css|js|mjs|jpg|jpeg|png|gif|webp|avif|svg|ico|woff|woff2|ttf|eot|pdf|mp4|webm|mp3|json|xml)$/i;
-const USER_AGENT = "Mozilla/5.0 (compatible; StaticHubIndexer/1.0)";
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const CHILD_BATCH_SIZE = 5;
 
 function getRootDomain(hostname) {
@@ -130,10 +131,16 @@ async function main() {
     try {
       let urls = await fetchSitemapUrls(site.sitemap, 0, stat);
 
-      // Fallback: check robots.txt if primary sitemap returned 0 URLs
+      // Fallback: check robots.txt and common sitemap paths if primary URL returns 0 URLs
       if (urls.length === 0) {
         const discovered = await discoverFromRobots(originBase);
-        for (const candidate of discovered) {
+        const fallbacks = [
+          ...discovered,
+          `${originBase}/sitemap.xml`,
+          `${originBase}/sitemap_index.xml`,
+        ];
+
+        for (const candidate of fallbacks) {
           if (candidate === site.sitemap) continue;
           const attempt = await fetchSitemapUrls(candidate, 0, stat);
           if (attempt.length > 0) {
@@ -172,7 +179,9 @@ async function main() {
     }
 
     stats.push(stat);
-    console.log(`[${site.id}] indexed=${stat.indexed} children=${stat.childrenFound} error=${stat.error || "none"}`);
+    console.log(
+      `[${site.id}] indexed=${stat.indexed} children=${stat.childrenFound} error=${stat.error || "none"}`
+    );
   }
 
   const output = {
