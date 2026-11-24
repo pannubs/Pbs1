@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Search Hub</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d0d0d;
+      color: #f0f0f0;
+      padding: 2rem 1rem;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { margin: 0 0 1rem; font-size: 22px; font-weight: 600; color: #f5e6d3; }
+
+    .search-bar { display: flex; gap: 8px; }
+    .search-bar input {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #2e2e2e;
+      background: #171717;
+      color: #fff;
+      outline: none;
+    }
+    .search-bar input:focus { border-color: #a67c52; }
+    .start-btn {
+      padding: 0 22px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: 1px solid #a67c52;
+      background: #8b5e3c;
+      color: #fff;
+      cursor: pointer;
+    }
+    .start-btn:hover { background: #a67c52; }
+    .start-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #status { color: #999; font-size: 13px; margin: 12px 0; }
+
+    details.index-info {
+      background: #141414;
+      border: 1px solid #262626;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 16px;
+    }
+    details.index-info summary { cursor: pointer; color: #d4a373; font-weight: 600; }
+    .stat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .pill { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: #222; color: #ccc; }
+    .pill.ok { background: #163020; color: #6ee7b7; }
+    .pill.err { background: #3b1717; color: #fca5a5; }
+
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { margin-bottom: 10px; }
+    .result-btn {
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      background: #161616;
+      border: 1px solid #262626;
+      border-radius: 10px;
+      color: #f3f3f3;
+      cursor: pointer;
+      font-size: 15px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .result-btn:hover { border-color: #a67c52; background: #1c1a18; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: #2a211b;
+      color: #d4a373;
+      margin-right: 8px;
+      font-weight: 600;
+      vertical-align: middle;
+    }
+    .result-path { display: block; color: #777; font-size: 12px; margin-top: 5px; word-break: break-all; }
+
+    /* Fullscreen Iframe Viewer Overlay */
+    .viewer {
+      position: fixed;
+      inset: 0;
+      background: #0b0b0b;
+      display: none;
+      flex-direction: column;
+      z-index: 1000;
+    }
+    .viewer.open { display: flex; }
+    .viewer-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #141414;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    .viewer-title {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #eee;
+    }
+    .bar-btn {
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 7px;
+      border: 1px solid #333;
+      background: #222;
+      color: #eee;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .bar-btn:hover { border-color: #a67c52; }
+    .bar-btn.primary { background: #8b5e3c; border-color: #a67c52; color: #fff; }
+    .viewer-frame-wrap { position: relative; flex: 1; background: #000; }
+    .viewer-frame-wrap iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+    .viewer-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(13, 13, 13, 0.92);
+      color: #d4a373;
+      font-size: 14px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Search Hub</h1>
+
+    <form id="searchForm" class="search-bar">
+      <input id="q" type="search" placeholder="Enter keyword and click Start..." autofocus />
+      <button id="startBtn" class="start-btn" type="submit">Start</button>
+    </form>
+
+    <div id="status">Enter a keyword and click Start to search all indexed sites.</div>
+
+    <details id="indexInfo" class="index-info" style="display:none;">
+      <summary>Index Status</summary>
+      <div id="statRows" class="stat-row"></div>
+    </details>
+
+    <ul id="results"></ul>
+  </div>
+
+  <div id="viewer" class="viewer">
+    <div class="viewer-bar">
+      <button id="backBtn" class="bar-btn primary" type="button">← Back</button>
+      <div id="viewerTitle" class="viewer-title">Loading...</div>
+      <button id="reloadBtn" class="bar-btn" type="button">Reload</button>
+      <a id="directLink" class="bar-btn" href="#" target="_blank" rel="noopener noreferrer">Open Tab ↗</a>
+    </div>
+    <div class="viewer-frame-wrap">
+      <div id="viewerLoader" class="viewer-loader">Loading page...</div>
+      <iframe id="viewerFrame" src="about:blank" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("searchForm");
+    const input = document.getElementById("q");
+    const startBtn = document.getElementById("startBtn");
+    const statusEl = document.getElementById("status");
+    const resultsEl = document.getElementById("results");
+    const indexInfoEl = document.getElementById("indexInfo");
+    const statRowsEl = document.getElementById("statRows");
+
+    const viewer = document.getElementById("viewer");
+    const viewerTitle = document.getElementById("viewerTitle");
+    const viewerFrame = document.getElementById("viewerFrame");
+    const viewerLoader = document.getElementById("viewerLoader");
+    const directLink = document.getElementById("directLink");
+
+    let INDEX_DATA = null;
+    let currentIframeUrl = "";
+
+    function esc(s) {
+      return String(s || "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function slugToTitle(pathname) {
+      const segs = pathname.split("/").filter(Boolean);
+      const slug = (segs[segs.length - 1] || "")
+        .replace(/\.(html|htm|php)$/i, "")
+        .replace(/[-_]+/g, " ");
+      try {
+        return decodeURIComponent(slug).replace(/\b\w/g, (c) => c.toUpperCase());
+      } catch {
+        return slug;
+      }
+    }
+
+    async function ensureIndexLoaded() {
+      if (INDEX_DATA) return INDEX_DATA;
+      statusEl.textContent = "Loading search index...";
+      const res = await fetch("./index.json");
+      if (!res.ok) throw new Error("Could not load index.json (run the GitHub Action first).");
+      INDEX_DATA = await res.json();
+
+      // Populate index status panel
+      indexInfoEl.style.display = "block";
+      statRowsEl.innerHTML = (INDEX_DATA.stats || [])
+        .map((s) => `<span class="pill ${s.indexed > 0 ? "ok" : "err"}">${esc(s.id)}: ${s.indexed} URLs${s.error ? " (" + esc(s.error) + ")" : ""}</span>`)
+        .join("") + `<span class="pill">Updated: ${new Date(INDEX_DATA.updatedAt).toLocaleString()}</span>`;
+
+      return INDEX_DATA;
+    }
+
+    // Runs ONLY when user clicks Start or presses Enter
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const rawQuery = input.value.trim().toLowerCase();
+      if (rawQuery.length < 2) {
+        statusEl.textContent = "Please enter at least 2 characters.";
+        return;
+      }
+
+      startBtn.disabled = true;
+      startBtn.textContent = "Searching...";
+
+      try {
+        const data = await ensureIndexLoaded();
+        const tokens = rawQuery.split(/\s+/).filter(Boolean);
+        const siteCount = data.sites.length;
+        const grouped = Array.from({ length: siteCount }, () => []);
+
+        for (let i = 0; i < data.items.length; i++) {
+          const [siteIdx, itemPath] = data.items[i];
+          const haystack = itemPath.toLowerCase().replace(/[-_/]+/g, " ");
+          if (tokens.every((t) => haystack.includes(t))) {
+            grouped[siteIdx].push({
+              siteIdx,
+              siteId: data.sites[siteIdx].id,
+              origin: data.sites[siteIdx].origin,
+              path: itemPath,
+              title: slugToTitle(itemPath),
+            });
+          }
+        }
+
+        // Round-robin merge so every site with matches appears fairly
+        const merged = [];
+        const limit = 40;
+        let round = 0;
+        while (merged.length < limit) {
+          let added = false;
+          for (let s = 0; s < siteCount; s++) {
+            if (grouped[s][round]) {
+              merged.push(grouped[s][round]);
+              added = true;
+              if (merged.length >= limit) break;
+            }
+          }
+          if (!added) break;
+          round++;
+        }
+
+        const perSiteText = data.sites
+          .map((s, idx) => `${s.id}: ${grouped[idx].length}`)
+          .join(" | ");
+        statusEl.textContent = `Showing ${merged.length} matches (${perSiteText}) from ${data.items.length.toLocaleString()} indexed URLs.`;
+
+        if (!merged.length) {
+          resultsEl.innerHTML = `<li style="color:#888;padding:12px 0;">No matching posts found.</li>`;
+          return;
+        }
+
+        resultsEl.innerHTML = "";
+        for (const item of merged) {
+          const li = document.createElement("li");
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "result-btn";
+          btn.innerHTML = `<span class="badge">${esc(item.siteId)}</span>${esc(item.title)}<span class="result-path">${esc(item.path)}</span>`;
+          btn.addEventListener("click", () => openInViewer(item));
+          li.appendChild(btn);
+          resultsEl.appendChild(li);
+        }
+      } catch (err) {
+        statusEl.textContent = err.message || "Search failed.";
+      } finally {
+        startBtn.disabled = false;
+        startBtn.textContent = "Start";
+      }
+    });
+
+    function openInViewer(item) {
+      const targetUrl = new URL(item.path, item.origin);
+      if (targetUrl.protocol !== "https:" && targetUrl.protocol !== "http:") return;
+
+      currentIframeUrl = targetUrl.toString();
+      viewerTitle.textContent = `[${item.siteId}] ${item.title}`;
+      directLink.href = currentIframeUrl;
+      viewerLoader.style.display = "flex";
+      viewerFrame.src = currentIframeUrl;
+      viewer.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    viewerFrame.addEventListener("load", () => {
+      viewerLoader.style.display = "none";
+    });
+
+    document.getElementById("backBtn").addEventListener("click", () => {
+      viewer.classList.remove("open");
+      viewerFrame.src = "about:blank";
+      document.body.style.overflow = "";
+    });
+
+    document.getElementById("reloadBtn").addEventListener("click", () => {
+      if (!currentIframeUrl) return;
+      viewerLoader.style.display = "flex";
+      viewerFrame.src = "about:blank";
+      setTimeout(() => { viewerFrame.src = currentIframeUrl; }, 50);
+    });
+  </script>
+</body>
+</html>
