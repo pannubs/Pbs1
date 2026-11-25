@@ -12,8 +12,8 @@ const SITES = [
   },
   {
     id: "s2",
-    origin: "https://filmyfly.kred",
-    sitemap: "https://filmyfly.kred/post-sitemap.xml",
+    origin: "https://filmyfly.haus",
+    sitemap: "https://filmyfly.haus/post-sitemap.xml",
   },
   {
     id: "s3",
